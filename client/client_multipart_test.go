@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -58,7 +58,7 @@ func TestRequestMultipartSignsMetaAndSendsMultipartBody(t *testing.T) {
 		file, _, err := r.FormFile("file")
 		assert.Equal(t, nil, err)
 		defer file.Close()
-		content, err := io.ReadAll(file)
+		content, err := ioutil.ReadAll(file)
 		assert.Equal(t, nil, err)
 		assert.Equal(t, "image-content", string(content))
 
