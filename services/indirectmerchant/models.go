@@ -97,7 +97,13 @@ type QueryMerchantRequest struct {
 }
 
 func (r QueryMerchantRequest) Validate() error {
-	return r.MerchantLocator.Validate()
+	if err := r.MerchantLocator.Validate(); err != nil {
+		return err
+	}
+	if r.IndirectMerchantID != "" && r.OutChannelSpID != "" {
+		return errors.New("out_channel_sp_id is only supported with external merchant locator")
+	}
+	return nil
 }
 
 type QueryMerchantResponse struct {

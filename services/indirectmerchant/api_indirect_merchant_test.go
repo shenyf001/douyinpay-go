@@ -79,6 +79,11 @@ func TestQueryMerchantUsesOneLocator(t *testing.T) {
 		},
 	})
 	assert.Equal(t, true, err != nil)
+	_, _, err = service.QueryMerchant(context.Background(), QueryMerchantRequest{
+		MerchantLocator: MerchantLocator{IndirectMerchantID: "im_1"},
+		OutChannelSpID:  "channel_1",
+	})
+	assert.Equal(t, true, err != nil)
 }
 
 func TestIndirectMerchantRequestContracts(t *testing.T) {
@@ -104,13 +109,17 @@ func TestIndirectMerchantRequestContracts(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assertRequest(t, transport.request, http.MethodPost, consts.CancelIndirectMerchantApplyPath, url.Values{}, "{\"business_code\":\"apply_1\"}\n")
 
-	locator := MerchantLocator{IndirectMerchantID: "im_1"}
-	_, _, err = service.QueryMerchant(ctx, QueryMerchantRequest{MerchantLocator: locator, OutChannelSpID: "channel_1"})
+	externalLocator := MerchantLocator{OutIndirectMerchantID: "out_merchant_1", OutPaymentInstID: "payment_inst_1"}
+	_, _, err = service.QueryMerchant(ctx, QueryMerchantRequest{
+		MerchantLocator: externalLocator, OutChannelSpID: "channel_1",
+	})
 	assert.Equal(t, nil, err)
 	assertRequest(t, transport.request, http.MethodGet, consts.QueryIndirectMerchantPath, url.Values{
-		"indirect_merchant_id": {"im_1"}, "out_channel_sp_id": {"channel_1"},
+		"out_indirect_merchant_id": {"out_merchant_1"}, "out_payment_inst_id": {"payment_inst_1"},
+		"out_channel_sp_id": {"channel_1"},
 	}, "")
 
+	locator := MerchantLocator{IndirectMerchantID: "im_1"}
 	_, err = service.ModifyMerchant(ctx, ModifyMerchantRequest{MerchantLocator: locator, MerchantShortName: "merchant", ServicePhone: "13800138000"})
 	assert.Equal(t, nil, err)
 	assertRequest(t, transport.request, http.MethodPost, consts.ModifyIndirectMerchantPath, url.Values{}, "{\"indirect_merchant_id\":\"im_1\",\"merchant_short_name\":\"merchant\",\"service_phone\":\"13800138000\"}\n")
