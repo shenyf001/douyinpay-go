@@ -81,6 +81,15 @@ const (
 
 	// 收银
 	PrePayConsultPath = "/v1/cashier/prepay/consult" // 前置咨询
+
+	CreateIndirectMerchantApplyPath = "/v1/merchant/indirect_merchant/create_apply"
+	QueryIndirectMerchantApplyPath  = "/v1/merchant/indirect_merchant/query_apply"
+	CancelIndirectMerchantApplyPath = "/v1/merchant/indirect_merchant/cancel_apply"
+	QueryIndirectMerchantPath       = "/v1/merchant/indirect_merchant/query_merchant"
+	ModifyIndirectMerchantPath      = "/v1/merchant/indirect_merchant/modify"
+	BindIndirectMerchantAppIDPath   = "/v1/merchant/indirect_merchant/bind_app_id"
+	QueryIndirectMerchantAppIDPath  = "/v1/merchant/indirect_merchant/query_app_id"
+	UploadMerchantMediaPath         = "/v1/merchant/upload"
 )
 
 // HTTP 请求报文 Header 相关常量
