@@ -9,5 +9,26 @@
 2. 退款：主要包含了退款，根据外部单号查询退款订单两个接口，代码路径：services/refund
 3. 回调：主要包含了通知的解析接口，代码路径：services/callback
 4. 账单：主要包含了账单的接口，代码路径：services/bill
+5. 间连商户：包含入驻申请、申请查询/撤销、商户查询/修改、AppID 绑定/查询和图片上传，代码路径：services/indirectmerchant
+
+## 3. 间连商户回调
+
+使用已有初始化流程创建 `cli` 后，构造 `indirectmerchant.ApiService` 调用间连商户接口；申请单状态通知通过 `ParseApplymentStatusNotify` 解析：
+
+```go
+service := &indirectmerchant.ApiService{Client: cli}
+_ = service
+
+notifyRequest, content, err := indirectmerchant.ParseApplymentStatusNotify(ctx, handler, request)
+if err != nil {
+	// 拒绝本次通知。
+	return
+}
+
+// 按 notifyRequest.ID 去重；未知 applyment_state 保留原值。
+_ = content.ApplymentState
+```
+
+调用方不得记录解密后的回调内容或上传文件内容；应按通知 ID 去重，并在重复或乱序通知时调用查询接口校准状态。
 
 接口的使用方法可以参考每处代码下的xxx_test.go的测试用例

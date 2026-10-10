@@ -172,6 +172,17 @@ type UploadResponse struct {
 	MediaID string `json:"media_id"`
 }
 
+// ApplymentStatusNotification is the decrypted content of an indirect
+// merchant application status notification.
+type ApplymentStatusNotification struct {
+	SpMchid            string `json:"sp_mchid"`
+	ApplymentID        string `json:"applyment_id"`
+	BusinessCode       string `json:"business_code"`
+	IndirectMerchantID string `json:"indirect_merchant_id"`
+	ApplymentState     string `json:"applyment_state"`
+	FailReason         string `json:"fail_reason"`
+}
+
 func validateApplymentReference(applymentID, businessCode string) error {
 	if (applymentID == "") == (businessCode == "") {
 		return errors.New("specify exactly one of applyment_id or business_code")

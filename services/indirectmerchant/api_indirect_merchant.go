@@ -5,15 +5,31 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	nethttp "net/http"
 	neturl "net/url"
 
 	"github.com/douyinpay/douyinpay-go/client"
 	"github.com/douyinpay/douyinpay-go/services"
+	"github.com/douyinpay/douyinpay-go/services/callback"
 	"github.com/douyinpay/douyinpay-go/tools/consts"
 )
 
 type ApiService services.Service
+
+// ParseApplymentStatusNotify verifies and decrypts an indirect merchant
+// application status notification.
+func ParseApplymentStatusNotify(ctx context.Context, handler *callback.Handler, request *nethttp.Request) (*callback.Request, *ApplymentStatusNotification, error) {
+	if handler == nil {
+		return nil, nil, fmt.Errorf("handler is required")
+	}
+	content := new(ApplymentStatusNotification)
+	notifyRequest, err := handler.ParseCallback(ctx, request, content)
+	if err != nil {
+		return nil, nil, err
+	}
+	return notifyRequest, content, nil
+}
 
 func (a *ApiService) CreateApply(ctx context.Context, req CreateApplyRequest) (*CreateApplyResponse, *client.APIResult, error) {
 	if err := req.Validate(); err != nil {

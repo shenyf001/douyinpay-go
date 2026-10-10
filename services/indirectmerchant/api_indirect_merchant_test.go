@@ -1,7 +1,12 @@
 package indirectmerchant
 
 import (
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +17,7 @@ import (
 
 	"github.com/bmizerany/assert"
 	"github.com/douyinpay/douyinpay-go/client"
+	"github.com/douyinpay/douyinpay-go/services/callback"
 	"github.com/douyinpay/douyinpay-go/tools/auth"
 	"github.com/douyinpay/douyinpay-go/tools/consts"
 )
@@ -116,8 +122,9 @@ func TestIndirectMerchantRequestContracts(t *testing.T) {
 		"indirect_merchant_id": {"im_1"}, "app_id": {"app_1"},
 	}, "")
 
-	_, _, err = service.Upload(ctx, UploadRequest{FileName: "license.jpg", ContentType: "image/jpeg", FileContent: []byte("image-content")})
+	uploadResponse, _, err := service.Upload(ctx, UploadRequest{FileName: "license.jpg", ContentType: "image/jpeg", FileContent: []byte("image-content")})
 	assert.Equal(t, nil, err)
+	assert.Equal(t, "media_1", uploadResponse.MediaID)
 	assert.Equal(t, http.MethodPost, transport.request.method)
 	assert.Equal(t, consts.UploadMerchantMediaPath, transport.request.path)
 	assert.Equal(t, consts.MultipartFormData, transport.request.header.Get(consts.ContentType)[:len(consts.MultipartFormData)])
@@ -134,6 +141,41 @@ func TestApplymentReferenceAndUploadValidation(t *testing.T) {
 	assert.Equal(t, true, UploadRequest{FileName: "license.gif", FileContent: []byte("file")}.Validate() != nil)
 	assert.Equal(t, nil, UploadRequest{FileName: "license.png", FileContent: make([]byte, 5*1024*1024)}.Validate())
 	assert.Equal(t, true, UploadRequest{FileName: "license.png", FileContent: make([]byte, 5*1024*1024+1)}.Validate() != nil)
+}
+
+func TestParseApplymentStatusNotifyDelegatesToCallbackHandler(t *testing.T) {
+	const key = "01234567890123456789012345678901"
+	const plaintext = `{"sp_mchid":"sp_1","applyment_id":"apply_1","business_code":"business_1","indirect_merchant_id":"merchant_1","applyment_state":"APPLYMENT_STATE_PASSED"}`
+	const associatedData = "transaction"
+	const nonce = "0123456789ab"
+
+	block, err := aes.NewCipher([]byte(key))
+	assert.Equal(t, nil, err)
+	gcm, err := cipher.NewGCMWithNonceSize(block, len(nonce))
+	assert.Equal(t, nil, err)
+	ciphertext := base64.StdEncoding.EncodeToString(gcm.Seal(nil, []byte(nonce), []byte(plaintext), []byte(associatedData)))
+	body, err := json.Marshal(map[string]interface{}{
+		"id": "notification_1",
+		"resource": map[string]string{
+			"algorithm": consts.EncryptTypeAES256GCM, "ciphertext": ciphertext,
+			"associated_data": associatedData, "nonce": nonce,
+		},
+	})
+	assert.Equal(t, nil, err)
+	request := &http.Request{
+		Header: http.Header{
+			consts.DouyinPaySerial:    []string{"platform-serial"},
+			consts.DouyinPaySignature: []string{"signature"},
+			consts.DouyinPayTimestamp: []string{"1"},
+			consts.DouyinPayNonce:     []string{"nonce"},
+		},
+		Body: ioutil.NopCloser(bytes.NewReader(body)),
+	}
+
+	notifyRequest, content, err := ParseApplymentStatusNotify(context.Background(), callback.NewNotifyHandler(key, new(testVerifier)), request)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "notification_1", notifyRequest.ID)
+	assert.Equal(t, "APPLYMENT_STATE_PASSED", content.ApplymentState)
 }
 
 func newTestService(t *testing.T, transport http.RoundTripper) *ApiService {
