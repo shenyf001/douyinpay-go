@@ -88,9 +88,12 @@ func TestIndirectMerchantRequestContracts(t *testing.T) {
 
 	_, _, err := service.CreateApply(ctx, CreateApplyRequest{
 		BusinessCode: "apply_1", DouyinpaySerial: "platform-serial",
+		OutIndirectMerchantID: "out_merchant_1", OutPaymentInstID: "payment_inst_1",
+		OutChannelSpID: "channel_sp_1", OutPaymentInstSubID: "payment_inst_sub_1",
+		IndirectMerchantID: "merchant_1",
 	})
 	assert.Equal(t, nil, err)
-	assertRequest(t, transport.request, http.MethodPost, consts.CreateIndirectMerchantApplyPath, url.Values{}, "{\"business_code\":\"apply_1\"}\n")
+	assertRequest(t, transport.request, http.MethodPost, consts.CreateIndirectMerchantApplyPath, url.Values{}, "{\"business_code\":\"apply_1\",\"out_indirect_merchant_id\":\"out_merchant_1\",\"out_payment_inst_id\":\"payment_inst_1\",\"out_channel_sp_id\":\"channel_sp_1\",\"out_payment_inst_sub_id\":\"payment_inst_sub_1\",\"indirect_merchant_id\":\"merchant_1\"}\n")
 	assert.Equal(t, "platform-serial", transport.request.header.Get(consts.DouyinpaySerial))
 
 	_, _, err = service.QueryApply(ctx, QueryApplyRequest{ApplymentID: "apply_1"})
@@ -133,6 +136,19 @@ func TestIndirectMerchantRequestContracts(t *testing.T) {
 }
 
 func TestApplymentReferenceAndUploadValidation(t *testing.T) {
+	validCreateApplyRequest := CreateApplyRequest{
+		BusinessCode: "apply_1", DouyinpaySerial: "platform-serial",
+		OutIndirectMerchantID: "out_merchant_1", OutPaymentInstID: "payment_inst_1",
+	}
+	assert.Equal(t, true, CreateApplyRequest{
+		BusinessCode: validCreateApplyRequest.BusinessCode, DouyinpaySerial: validCreateApplyRequest.DouyinpaySerial,
+		OutPaymentInstID: validCreateApplyRequest.OutPaymentInstID,
+	}.Validate() != nil)
+	assert.Equal(t, true, CreateApplyRequest{
+		BusinessCode: validCreateApplyRequest.BusinessCode, DouyinpaySerial: validCreateApplyRequest.DouyinpaySerial,
+		OutIndirectMerchantID: validCreateApplyRequest.OutIndirectMerchantID,
+	}.Validate() != nil)
+	assert.Equal(t, nil, validCreateApplyRequest.Validate())
 	assert.Equal(t, true, QueryApplyRequest{}.Validate() != nil)
 	assert.Equal(t, true, QueryApplyRequest{ApplymentID: "apply_1", BusinessCode: "business_1"}.Validate() != nil)
 	assert.Equal(t, true, CancelApplyRequest{}.Validate() != nil)

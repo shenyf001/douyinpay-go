@@ -32,12 +32,17 @@ func (l MerchantLocator) Validate() error {
 }
 
 type CreateApplyRequest struct {
-	BusinessCode       string                 `json:"business_code"`
-	DouyinpaySerial    string                 `json:"-"`
-	SubjectInfo        map[string]interface{} `json:"subject_info,omitempty"`
-	IdentificationInfo map[string]interface{} `json:"identification_info,omitempty"`
-	BusinessInfo       map[string]interface{} `json:"business_info,omitempty"`
-	AdditionInfo       map[string]interface{} `json:"addition_info,omitempty"`
+	BusinessCode          string                 `json:"business_code"`
+	DouyinpaySerial       string                 `json:"-"`
+	OutIndirectMerchantID string                 `json:"out_indirect_merchant_id"`
+	OutPaymentInstID      string                 `json:"out_payment_inst_id"`
+	OutChannelSpID        string                 `json:"out_channel_sp_id,omitempty"`
+	OutPaymentInstSubID   string                 `json:"out_payment_inst_sub_id,omitempty"`
+	IndirectMerchantID    string                 `json:"indirect_merchant_id,omitempty"`
+	SubjectInfo           map[string]interface{} `json:"subject_info,omitempty"`
+	IdentificationInfo    map[string]interface{} `json:"identification_info,omitempty"`
+	BusinessInfo          map[string]interface{} `json:"business_info,omitempty"`
+	AdditionInfo          map[string]interface{} `json:"addition_info,omitempty"`
 }
 
 func (r CreateApplyRequest) Validate() error {
@@ -46,6 +51,12 @@ func (r CreateApplyRequest) Validate() error {
 	}
 	if r.DouyinpaySerial == "" {
 		return errors.New("douyinpay_serial is required")
+	}
+	if r.OutIndirectMerchantID == "" {
+		return errors.New("out_indirect_merchant_id is required")
+	}
+	if r.OutPaymentInstID == "" {
+		return errors.New("out_payment_inst_id is required")
 	}
 	return nil
 }
