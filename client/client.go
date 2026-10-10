@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -144,6 +145,16 @@ type RequestEntity struct {
 	ContentType string
 }
 
+// MultipartRequestEntity describes a multipart request whose signature body is
+// intentionally separate from the transmitted multipart body.
+type MultipartRequestEntity struct {
+	Method, RequestPath, SignBody, FileField, FileName, ContentType string
+	Header                                                          http.Header
+	QueryParams                                                     url.Values
+	Fields                                                          map[string]string
+	FileContent                                                     []byte
+}
+
 func (client *Client) Request(ctx context.Context, r *RequestEntity) (*APIResult, error) {
 
 	pathWithQueryParam, err := SetPathWithParams(r.RequestPath, r.QueryParams)
@@ -195,19 +206,67 @@ func (client *Client) Request(ctx context.Context, r *RequestEntity) (*APIResult
 		request.Header.Set(consts.DouyinpaySdkAgent, client.AgentName)
 	}
 
-	// Send HTTP Request
-	result := &APIResult{
-		Request: request,
+	return client.doRequest(ctx, request)
+}
+
+// RequestMultipart creates and sends a multipart request. SignBody is used for
+// Authorization while Fields and FileContent are used to construct the body.
+func (client *Client) RequestMultipart(ctx context.Context, r *MultipartRequestEntity) (*APIResult, error) {
+	pathWithQueryParam, err := SetPathWithParams(r.RequestPath, r.QueryParams)
+	if err != nil {
+		return nil, err
 	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	for key, value := range r.Fields {
+		if err = writer.WriteField(key, value); err != nil {
+			return nil, err
+		}
+	}
+	part, err := writer.CreateFormFile(r.FileField, r.FileName)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = part.Write(r.FileContent); err != nil {
+		return nil, err
+	}
+	if err = writer.Close(); err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequestWithContext(ctx, r.Method, pathWithQueryParam, body)
+	if err != nil {
+		return nil, err
+	}
+	for key, values := range r.Header {
+		for _, value := range values {
+			request.Header.Add(key, value)
+		}
+	}
+	request.Header.Set(consts.ContentType, writer.FormDataContentType())
+
+	authorization, err := client.GenerateAuthorizationHeader(ctx, r.Method, request.URL.RequestURI(), r.SignBody)
+	if err != nil {
+		return nil, fmt.Errorf("generate authorization err:%s", err.Error())
+	}
+	request.Header.Set(consts.Authorization, authorization)
+	if client.AgentName != "" {
+		request.Header.Set(consts.DouyinpaySdkAgent, client.AgentName)
+	}
+	return client.doRequest(ctx, request)
+}
+
+func (client *Client) doRequest(ctx context.Context, request *http.Request) (*APIResult, error) {
+	result := &APIResult{Request: request}
+	var err error
 	result.Response, err = client.httpClient.Do(request)
 	if err != nil {
 		return result, err
 	}
-	// Check Response
 	if err = CheckResponse(result.Response); err != nil {
 		return result, err
 	}
-	// Validate Signature
 	if err = client.Validate(ctx, result.Response); err != nil {
 		return result, err
 	}

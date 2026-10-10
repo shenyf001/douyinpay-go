@@ -96,7 +96,8 @@ const (
 
 // 常用 ContentType
 const (
-	ApplicationJSON = "application/json"
+	ApplicationJSON   = "application/json"
+	MultipartFormData = "multipart/form-data"
 )
 
 // 请求报文签名相关常量
