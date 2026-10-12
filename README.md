@@ -16,7 +16,13 @@
 使用已有初始化流程创建 `cli` 后，构造 `indirectmerchant.ApiService` 调用间连商户接口；申请单状态通知通过 `ParseApplymentStatusNotify` 解析：
 
 ```go
-service := &indirectmerchant.ApiService{Client: cli}
+service := &indirectmerchant.ApiService{
+	Client: cli,
+	SensitiveFields: &indirectmerchant.SensitiveFieldConfig{
+		PlatformCertificate: platformCertificate,
+		MerchantPrivateKey: merchantPrivateKey,
+	},
+}
 _ = service
 
 notifyRequest, content, err := indirectmerchant.ParseApplymentStatusNotify(ctx, handler, request)
@@ -30,5 +36,7 @@ _ = content.ApplymentState
 ```
 
 调用方不得记录解密后的回调内容或上传文件内容；应按通知 ID 去重，并在重复或乱序通知时调用查询接口校准状态。
+
+请求和响应均提供完整强类型嵌套模型。创建申请的证件持有人姓名、证件号传明文，由 SDK 使用平台证书 RSA PKCS#1 v1.5 加密；查询商户响应验签后，使用商户私钥解密这两个字段。`DouyinpaySerial` 可由加密证书推导；显式传入时必须与证书一致。加密使用请求副本，不修改调用方对象。图片上传按官方参数表限制 5 MB；官方错误码表仍有 2 MB 旧描述，实际服务端限制需以返回结果为准。
 
 接口的使用方法可以参考每处代码下的xxx_test.go的测试用例

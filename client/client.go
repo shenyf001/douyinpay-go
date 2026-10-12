@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"os"
 	"regexp"
@@ -152,6 +154,7 @@ type MultipartRequestEntity struct {
 	Header                                                          http.Header
 	QueryParams                                                     url.Values
 	Fields                                                          map[string]string
+	FieldContentTypes                                               map[string]string
 	FileContent                                                     []byte
 }
 
@@ -220,11 +223,37 @@ func (client *Client) RequestMultipart(ctx context.Context, r *MultipartRequestE
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	for key, value := range r.Fields {
-		if err = writer.WriteField(key, value); err != nil {
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{"name": key}))
+		if contentType := r.FieldContentTypes[key]; contentType != "" {
+			mediaType, params, err := mime.ParseMediaType(contentType)
+			if err != nil {
+				return nil, fmt.Errorf("invalid content type for field %q: %w", key, err)
+			}
+			header.Set("Content-Type", mime.FormatMediaType(mediaType, params))
+		}
+		part, err := writer.CreatePart(header)
+		if err != nil {
+			return nil, err
+		}
+		if _, err = io.WriteString(part, value); err != nil {
 			return nil, err
 		}
 	}
-	part, err := writer.CreateFormFile(r.FileField, r.FileName)
+	contentType := r.ContentType
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file content type: %w", err)
+	}
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{
+		"name": r.FileField, "filename": r.FileName,
+	}))
+	header.Set("Content-Type", mime.FormatMediaType(mediaType, params))
+	part, err := writer.CreatePart(header)
 	if err != nil {
 		return nil, err
 	}
