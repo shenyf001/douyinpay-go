@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 const maxUploadFileSize = 5 * 1024 * 1024
@@ -391,8 +392,9 @@ func (r UploadRequest) Validate() error {
 	if len(r.FileContent) > maxUploadFileSize {
 		return fmt.Errorf("file content must not exceed %d bytes", maxUploadFileSize)
 	}
-	if len(r.FileName) == 0 || len(r.FileName) > 128 {
-		return errors.New("filename must contain 1-128 characters")
+	if !utf8.ValidString(r.FileName) || utf8.RuneCountInString(r.FileName) == 0 ||
+		utf8.RuneCountInString(r.FileName) > 128 {
+		return errors.New("filename must contain 1-128 UTF-8 characters")
 	}
 	switch {
 	case strings.HasSuffix(strings.ToLower(r.FileName), ".jpg"),

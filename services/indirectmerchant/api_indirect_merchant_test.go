@@ -361,6 +361,22 @@ func TestApplymentReferenceAndUploadValidation(t *testing.T) {
 	assert.Equal(t, true, UploadRequest{FileName: "license.png", FileContent: make([]byte, 5*1024*1024+1)}.Validate() != nil)
 }
 
+func TestUploadFilenameCharacterLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		wantError bool
+	}{
+		{strings.Repeat("图", 124) + ".png", false},
+		{strings.Repeat("图", 125) + ".png", true},
+		{string([]byte{0xff}) + ".png", true},
+	} {
+		err := (UploadRequest{FileName: tc.name, FileContent: []byte("file")}).Validate()
+		if (err != nil) != tc.wantError {
+			t.Errorf("filename validation: want error=%v, got %v", tc.wantError, err)
+		}
+	}
+}
+
 func TestParseApplymentStatusNotifyDelegatesToCallbackHandler(t *testing.T) {
 	const key = "01234567890123456789012345678901"
 	const plaintext = `{"sp_mchid":"sp_1","applyment_id":"apply_1","business_code":"business_1","indirect_merchant_id":"merchant_1","applyment_state":"APPLYMENT_STATE_PASSED"}`
